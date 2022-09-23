@@ -1,0 +1,45 @@
+name: 'Miqa Test Kickoff Only'
+description: 'Kick off jobs on Miqa'
+inputs:
+  GITHUB_TOKEN:
+    description: 'GitHub token'
+    required: true
+  TRIGGER_ID:
+    description: 'Miqa test trigger ID'
+    required: true
+  DOCKER_URI:
+    description: 'Docker URI for version to test on'
+    required: true
+  MIQA_ENDPOINT:
+    description: 'Root URL for Miqa (proxy or app domain)'
+    required: true
+  CHECK_NAME:
+    description: 'Name to display in checks status'
+    default: 'Triggered Miqa Test'
+  SHA:
+    description: 'github.sha'
+  REPOSITORY:
+    description: 'github.repository'
+runs:
+  using: "composite"
+  steps:
+      - name: Fetch commit SHA
+        id: fetch_sha
+        uses: octokit/request-action@v2.1.0
+        with:
+          route: GET /repos/{repo}/commits/{sha}
+          repo: ${{ inputs.REPOSITORY }}
+          sha: ${{ inputs.SHA }}
+        env:
+          GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
+      - name: Save commit SHA
+        shell: bash
+        id: get_sha
+        run: echo "::set-output name=parent_sha::${{ toJSON(fromJSON(steps.fetch_sha.outputs.data).parents[1].sha) }}"
+      - name: HTTP Request - Miqa Trigger
+        uses: fjogeleit/http-request-action@v1.11.0
+        with:
+          url: '${{ inputs.MIQA_ENDPOINT }}/trigger_test_auto/${{ inputs.TRIGGER_ID }}?app=gh&uri=${{ inputs.DOCKER_URI }}&allow_override=1&event_id=${{ steps.get_check_run.outputs.check_run_id }}&repo=${{ inputs.REPOSITORY }}&commit=${{ inputs.SHA }}'
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"repo":"${{ inputs.REPOSITORY }}", "commit":"${{ inputs.SHA }}"}'
