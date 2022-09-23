@@ -20,6 +20,10 @@ inputs:
     description: 'github.sha'
   REPOSITORY:
     description: 'github.repository'
+  COMPONENT_IDS:
+    description: 'Specific component IDs to update (if docker is not registered to component watchers)'
+    required: false
+    default: ''
 runs:
   using: "composite"
   steps:
@@ -39,7 +43,7 @@ runs:
       - name: HTTP Request - Miqa Trigger
         uses: fjogeleit/http-request-action@v1.11.0
         with:
-          url: '${{ inputs.MIQA_ENDPOINT }}/trigger_test_auto/${{ inputs.TRIGGER_ID }}?app=gh&uri=${{ inputs.DOCKER_URI }}&allow_override=1&event_id=${{ steps.get_check_run.outputs.check_run_id }}&repo=${{ inputs.REPOSITORY }}&commit=${{ inputs.SHA }}'
+          url: '${{ inputs.MIQA_ENDPOINT }}/trigger_test_auto/${{ inputs.TRIGGER_ID }}?app=gh&uri=${{ inputs.DOCKER_URI }}&allow_override=1&event_id=${{ steps.get_check_run.outputs.check_run_id }}&repo=${{ inputs.REPOSITORY }}&commit=${{ inputs.SHA }}&specific_components=${{ inputs.COMPONENT_IDS }}'
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"repo":"${{ inputs.REPOSITORY }}", "commit":"${{ inputs.SHA }}"}'
