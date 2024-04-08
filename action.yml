@@ -49,5 +49,6 @@ runs:
         with:
           url: '${{ inputs.MIQA_ENDPOINT }}/trigger_test_auto/${{ inputs.TRIGGER_ID }}?app=gh&uri=${{ inputs.DOCKER_URI }}&allow_override=1&event_id=${{ steps.get_check_run.outputs.check_run_id }}&repo=${{ inputs.REPOSITORY }}&commit=${{ inputs.SHA }}&specific_components=${{ inputs.COMPONENT_IDS }}${{ inputs.ADDITIONAL_INSTRUCTIONS }}'
           method: 'POST'
+          timeout: 30000
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"repo":"${{ inputs.REPOSITORY }}", "commit":"${{ inputs.SHA }}"}'
