@@ -57,4 +57,4 @@ runs:
         name: Print response from miqa_trigger_http
         shell: bash
         run: |
-          echo "${{ steps.miqa_trigger_http.outputs }}"
+          echo "${{ fromJSON(steps.miqa_trigger_http.outputs) }}"
