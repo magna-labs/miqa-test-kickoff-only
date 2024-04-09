@@ -45,6 +45,7 @@ runs:
         id: get_sha
         run: echo "parent_sha=${{ toJSON(fromJSON(steps.fetch_sha.outputs.data).parents[1].sha) }}" >> "$GITHUB_OUTPUT"
       - name: HTTP Request - Miqa Trigger
+        id: miqa_trigger_http
         uses: fjogeleit/http-request-action@v1.14.0
         with:
           url: '${{ inputs.MIQA_ENDPOINT }}/trigger_test_auto/${{ inputs.TRIGGER_ID }}?app=gh&uri=${{ inputs.DOCKER_URI }}&allow_override=1&event_id=${{ steps.get_check_run.outputs.check_run_id }}&repo=${{ inputs.REPOSITORY }}&commit=${{ inputs.SHA }}&specific_components=${{ inputs.COMPONENT_IDS }}${{ inputs.ADDITIONAL_INSTRUCTIONS }}'
@@ -52,3 +53,8 @@ runs:
           timeout: 30000
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"repo":"${{ inputs.REPOSITORY }}", "commit":"${{ inputs.SHA }}"}'
+      - id: print_response
+        name: Print response from miqa_trigger_http
+        shell: bash
+        run: |
+          echo "${{ toJSON(fromJSON(steps.miqa_trigger_http.outputs.data)) }}"
