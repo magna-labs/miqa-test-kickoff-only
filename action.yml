@@ -7,9 +7,14 @@ inputs:
   TRIGGER_ID:
     description: 'Miqa test trigger ID'
     required: true
+  MIQA_API_KEY:
+    description: 'Miqa API Key'
+    required: false
+    default: ''
   DOCKER_URI:
     description: 'Docker URI for version to test on'
-    required: true
+    required: false
+    default: ''
   MIQA_ENDPOINT:
     description: 'Root URL for Miqa (proxy or app domain)'
     required: true
@@ -51,7 +56,7 @@ runs:
           url: '${{ inputs.MIQA_ENDPOINT }}/trigger_test_auto/${{ inputs.TRIGGER_ID }}?app=gh&uri=${{ inputs.DOCKER_URI }}&allow_override=1&event_id=${{ steps.get_check_run.outputs.check_run_id }}&repo=${{ inputs.REPOSITORY }}&commit=${{ inputs.SHA }}&specific_components=${{ inputs.COMPONENT_IDS }}${{ inputs.ADDITIONAL_INSTRUCTIONS }}'
           method: 'POST'
           timeout: 30000
-          customHeaders: '{"Content-Type": "application/json"}'
+          customHeaders: '{"Content-Type": "application/json", "app_key":"${{ inputs.MIQA_API_KEY }}"}'
           data: '{"repo":"${{ inputs.REPOSITORY }}", "commit":"${{ inputs.SHA }}"}'
       - id: print_response
         name: Print response from miqa_trigger_http
