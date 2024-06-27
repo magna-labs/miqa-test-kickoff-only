@@ -60,6 +60,7 @@ runs:
           customHeaders: '{"Content-Type": "application/json", "app_key":"${{ inputs.MIQA_API_KEY }}"}'
           data: '{"repo":"${{ inputs.REPOSITORY }}", "commit":"${{ inputs.SHA }}"}'
       - id: print_response
+        if: ${{ steps.miqa_trigger_http.outputs.response }}
         name: Print response from miqa_trigger_http
         shell: bash
         run: |
