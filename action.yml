@@ -99,17 +99,3 @@ runs:
 
         echo "run_link=$link" >> "$GITHUB_OUTPUT"
         echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
-
-    - name: Write summary
-      if: ${{ steps.parse_trigger.outputs.run_link != '' }}
-      shell: bash
-      run: |
-        echo "::notice::Miqa run: ${{ steps.parse_trigger.outputs.run_link }}"
-        {
-          echo "### Miqa run"
-          echo ""
-          echo "- Link: ${{ steps.parse_trigger.outputs.run_link }}"
-          if [ -n "${{ steps.parse_trigger.outputs.run_id }}" ]; then
-            echo "- Run ID: ${{ steps.parse_trigger.outputs.run_id }}"
-          fi
-        } >> "$GITHUB_STEP_SUMMARY"
