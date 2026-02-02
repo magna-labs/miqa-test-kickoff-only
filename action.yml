@@ -1,5 +1,6 @@
 name: 'Miqa Test Kickoff Only'
 description: 'Kick off jobs on Miqa'
+
 inputs:
   GITHUB_TOKEN:
     description: 'GitHub token'
@@ -33,35 +34,82 @@ inputs:
     description: 'Additional custom instructions to pass as query parameters to the trigger. Prefix with &.'
     required: false
     default: ''
+
+outputs:
+  run_link:
+    description: "Link to the Miqa run (if available)"
+    value: ${{ steps.parse_trigger.outputs.run_link }}
+  run_id:
+    description: "Miqa run id (if available)"
+    value: ${{ steps.parse_trigger.outputs.run_id }}
+
 runs:
   using: "composite"
   steps:
-      - name: Fetch commit SHA
-        id: fetch_sha
-        uses: octokit/request-action@v2.1.9
-        with:
-          route: GET /repos/{repo}/commits/{sha}
-          repo: ${{ inputs.REPOSITORY }}
-          sha: ${{ inputs.SHA }}
-        env:
-          GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
-      - name: Save commit SHA
-        shell: bash
-        id: get_sha
-        run: echo "parent_sha=${{ toJSON(fromJSON(steps.fetch_sha.outputs.data).parents[1].sha) }}" >> "$GITHUB_OUTPUT"
-      - name: HTTP Request - Miqa Trigger
-        id: miqa_trigger_http
-        uses: fjogeleit/http-request-action@v1.14.0
-        with:
-          url: '${{ inputs.MIQA_ENDPOINT }}/trigger_test_auto/${{ inputs.TRIGGER_ID }}?app=gh&uri=${{ inputs.DOCKER_URI }}&allow_override=1&event_id=${{ steps.get_check_run.outputs.check_run_id }}&repo=${{ inputs.REPOSITORY }}&commit=${{ inputs.SHA }}&specific_components=${{ inputs.COMPONENT_IDS }}${{ inputs.ADDITIONAL_INSTRUCTIONS }}'
-          method: 'POST'
-          preventFailureOnNoResponse: true
-          timeout: 30000
-          customHeaders: '{"Content-Type": "application/json", "app_key":"${{ inputs.MIQA_API_KEY }}"}'
-          data: '{"repo":"${{ inputs.REPOSITORY }}", "commit":"${{ inputs.SHA }}"}'
-      - id: print_response
-        if: ${{ steps.miqa_trigger_http.outputs.response }}
-        name: Print response from miqa_trigger_http
-        shell: bash
-        run: |
-          echo "Miqa test is running. Monitor status at ${{ toJSON(fromJSON(steps.miqa_trigger_http.outputs.response).link) }}"
+    - name: Fetch commit SHA
+      id: fetch_sha
+      uses: octokit/request-action@v2.1.9
+      with:
+        route: GET /repos/{repo}/commits/{sha}
+        repo: ${{ inputs.REPOSITORY }}
+        sha: ${{ inputs.SHA }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
+
+    - name: Save commit SHA
+      shell: bash
+      id: get_sha
+      run: echo "parent_sha=${{ toJSON(fromJSON(steps.fetch_sha.outputs.data).parents[1].sha) }}" >> "$GITHUB_OUTPUT"
+
+    - name: HTTP Request - Miqa Trigger
+      id: miqa_trigger_http
+      uses: fjogeleit/http-request-action@v1.14.0
+      with:
+        url: '${{ inputs.MIQA_ENDPOINT }}/trigger_test_auto/${{ inputs.TRIGGER_ID }}?app=gh&uri=${{ inputs.DOCKER_URI }}&allow_override=1&event_id=${{ steps.get_check_run.outputs.check_run_id }}&repo=${{ inputs.REPOSITORY }}&commit=${{ inputs.SHA }}&specific_components=${{ inputs.COMPONENT_IDS }}${{ inputs.ADDITIONAL_INSTRUCTIONS }}'
+        method: 'POST'
+        preventFailureOnNoResponse: true
+        timeout: 30000
+        customHeaders: '{"Content-Type": "application/json", "app_key":"${{ inputs.MIQA_API_KEY }}"}'
+        data: '{"repo":"${{ inputs.REPOSITORY }}", "commit":"${{ inputs.SHA }}"}'
+
+    - id: print_response
+      if: ${{ steps.miqa_trigger_http.outputs.response }}
+      name: Print response from miqa_trigger_http
+      shell: bash
+      run: |
+        echo "Miqa test is running. Monitor status at ${{ toJSON(fromJSON(steps.miqa_trigger_http.outputs.response).link) }}"
+
+    - name: Parse Miqa kickoff response (outputs)
+      id: parse_trigger
+      shell: bash
+      env:
+        RESP: ${{ steps.miqa_trigger_http.outputs.response }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${RESP:-}" ]; then
+          echo "run_link=" >> "$GITHUB_OUTPUT"
+          echo "run_id=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # Extract fields if present; default to empty
+        link="$(echo "$RESP" | jq -r '.link // empty' 2>/dev/null || true)"
+        run_id="$(echo "$RESP" | jq -r '.run_id // .id // .test_chain_run_id // empty' 2>/dev/null || true)"
+
+        echo "run_link=$link" >> "$GITHUB_OUTPUT"
+        echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+    - name: Write summary
+      if: ${{ steps.parse_trigger.outputs.run_link != '' }}
+      shell: bash
+      run: |
+        echo "::notice::Miqa run: ${{ steps.parse_trigger.outputs.run_link }}"
+        {
+          echo "### Miqa run"
+          echo ""
+          echo "- Link: ${{ steps.parse_trigger.outputs.run_link }}"
+          if [ -n "${{ steps.parse_trigger.outputs.run_id }}" ]; then
+            echo "- Run ID: ${{ steps.parse_trigger.outputs.run_id }}"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
